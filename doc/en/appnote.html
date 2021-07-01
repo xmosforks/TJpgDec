@@ -15,6 +15,7 @@
 <li><a href="#use">How to Use</a></li>
 <li><a href="#limits">Limits</a></li>
 <li><a href="#memory">Memory Usage</a></li>
+<li><a href="#opt">Options</a></li>
 <li><a href="#license">About TJpgDec License</a></li>
 </ol>
 <hr>
@@ -43,6 +44,9 @@
 <span class="k">#include</span> &lt;stdio.h&gt;
 <span class="k">#include</span> &lt;string.h&gt;
 <span class="k">#include</span> "tjpgd.h"
+
+<span class="c">/* Bytes per pixel of image output */</span>
+<span class="k">#define</span> N_BPP (3 - JD_FORMAT)
 
 
 <span class="c">/* Session identifier for input/output functions (name, members and usage are as user defined) */</span>
@@ -78,7 +82,7 @@ size_t in_func (    <span class="c">/* Returns number of bytes read (zero on err
 <span class="c">/* User defined output funciton */</span>
 <span class="c">/*------------------------------*/</span>
 
-int out_func (      <span class="c">/* 1:Continue, 0:Abort */</span>
+int out_func (      <span class="c">/* Returns 1 to continue, 0 to abort */</span>
     JDEC* jd,       <span class="c">/* Decompression object */</span>
     void* bitmap,   <span class="c">/* Bitmap data to be output */</span>
     JRECT* rect     <span class="c">/* Rectangular region of output image */</span>
@@ -86,19 +90,20 @@ int out_func (      <span class="c">/* 1:Continue, 0:Abort */</span>
 {
     IODEV *dev = (IODEV*)jd-&gt;device;   <span class="c">/* Session identifier (5th argument of jd_prepare function) */</span>
     uint8_t *src, *dst;
-    uint16_t y, bws, bwd;
+    uint16_t y, bws;
+    unsigned int bwd;
 
 
-    <span class="c">/* Put progress indicator */</span>
+    <span class="c">/* Progress indicator */</span>
     <span class="k">if</span> (rect-&gt;left == 0) {
         printf("\r%lu%%", (rect-&gt;top &lt;&lt; jd-&gt;scale) * 100UL / jd-&gt;height);
     }
 
-    <span class="c">/* Copy the output image rectanglar to the frame buffer (assuming RGB888 output) */</span>
-    src = (uint8_t*)bitmap;
-    dst = dev-&gt;fbuf + 3 * (rect-&gt;top * dev-&gt;wfbuf + rect-&gt;left);  <span class="c">/* Left-top of destination rectangular */</span>
-    bws = 3 * (rect-&gt;right - rect-&gt;left + 1);     <span class="c">/* Width of output rectangular [byte] */</span>
-    bwd = 3 * dev-&gt;wfbuf;                         <span class="c">/* Width of frame buffer [byte] */</span>
+    <span class="c">/* Copy the output image rectangle to the frame buffer */</span>
+    src = (uint8_t*)bitmap;                           <span class="c">/* Output bitmap */</span>
+    dst = dev-&gt;fbuf + N_BPP * (rect-&gt;top * dev-&gt;wfbuf + rect-&gt;left);  <span class="c">/* Left-top of rectangle in the frame buffer */</span>
+    bws = N_BPP * (rect-&gt;right - rect-&gt;left + 1);     <span class="c">/* Width of the rectangle [byte] */</span>
+    bwd = N_BPP * dev-&gt;wfbuf;                         <span class="c">/* Width of the frame buffer [byte] */</span>
     <span class="k">for</span> (y = rect-&gt;top; y &lt;= rect-&gt;bottom; y++) {
         memcpy(dst, src, bws);   <span class="c">/* Copy a line */</span>
         src += bws; dst += bwd;  <span class="c">/* Next line */</span>
@@ -117,7 +122,7 @@ int main (int argc, char* argv[])
     JRESULT res;      <span class="c">/* Result code of TJpgDec API */</span>
     JDEC jdec;        <span class="c">/* Decompression object */</span>
     void *work;       <span class="c">/* Pointer to the work area */</span>
-    size_t sz_work = 3100; <span class="c">/* Size of work area */</span>
+    size_t sz_work = 3500; <span class="c">/* Size of work area */</span>
     IODEV devid;      <span class="c">/* Session identifier */</span>
 
 
@@ -128,16 +133,16 @@ int main (int argc, char* argv[])
 
     <span class="c">/* Prepare to decompress */</span>
     work = (void*)malloc(sz_work);
-    res = jd_prepare(&amp;jdec, in_func, work, sz_work, &amp;devid);
+    res = <span class="b">jd_prepare</span>(&amp;jdec, in_func, work, sz_work, &amp;devid);
     <span class="k">if</span> (res == JDR_OK) {
         <span class="c">/* It is ready to dcompress and image info is available here */</span>
         printf("Image size is %u x %u.\n%u bytes of work ares is used.\n", jdec.width, jdec.height, sz_work - jdec.sz_pool);
 
         <span class="c">/* Initialize output device */</span>
-        devid.fbuf = (uint8_t*)malloc(3 * jdec.width * jdec.height); <span class="c">/* Create frame buffer for output image (assuming RGB888 cfg) */</span>
+        devid.fbuf = (uint8_t*)malloc(N_BPP * jdec.width * jdec.height); <span class="c">/* Create frame buffer for output image */</span>
         devid.wfbuf = jdec.width;
 
-        res = jd_decomp(&amp;jdec, out_func, 0);   <span class="c">/* Start to decompress with 1/1 scaling */</span>
+        res = <span class="b">jd_decomp</span>(&amp;jdec, out_func, 0);   <span class="c">/* Start to decompress with 1/1 scaling */</span>
         <span class="k">if</span> (res == JDR_OK) {
             <span class="c">/* Decompression succeeded. You have the decompressed image in the frame buffer here. */</span>
             printf("\rDecompression succeeded.\n");
@@ -168,7 +173,7 @@ int main (int argc, char* argv[])
 <li>JPEG standard: Baseline only. Progressive and Lossless JPEG format are not supported.</li>
 <li>Image size: Upto 65520 x 65520 pixels.</li>
 <li>Colorspace: Y-Cb-Cr (color) and Grayscale (monochrome).</li>
-<li>Sampling factor: 4:4:4, 4:2:2 or 4:2:0 for color image.</li>
+<li>Sampling factor: 4:4:4, 4:2:2, 4:2:2(V) or 4:2:0 for color image.</li>
 </ul>
 </div>
 
@@ -180,7 +185,25 @@ int main (int argc, char* argv[])
 <tr><td>Compiler</td><td>GCC</td><td>C30</td><td>GCC</td><td>MSC</td></tr>
 <tr class="lst3"><td>text+const</td><td>6.1k</td><td>5.1k</td><td>3.1k</td><td>3.7k</td></tr>
 </table>
-<p>TJpgDec requires a work area upto 3100 bytes for most JPEG images. It exactly depends on what parameter has been used to create the JPEG image. The 3100 bytes is the maximum memory requirement at default input buffer configuration (<tt>JD_SZBUF == 512</tt>) and it varies by <tt>JD_SZBUF</tt>. The <tt>JD_SZBUF</tt> defines how many bytes read from input stream at a time. TJpgDec alignes each read request to the buffer size, so that 512, 1024, 2048... byte is ideal to read data from the storage device.</p>
+<p>TJpgDec requires a work area upto 3100 bytes for most JPEG images. It exactly depends on what parameter has been used to create the JPEG image to be decompressed. The 3100 bytes is the maximum memory requirement in default configuration and it varies depends on <tt>JD_SZBUF</tt> and <tt>JD_FASTDECODE</tt>.</p>
+</div>
+
+
+<div class="para" id="opt">
+<h3>Options</h3>
+<p>TJpgDec has some configuration options on output format, performance and memory usage. These options are in <tt>tjpgdcnf.h</tt>.</p>
+<dl>
+<dt>JD_SZBUF</dt>
+<dd>This option speficies how many bytes read from input stream at a time. TJpgDec alignes each read request to the buffer size, so that 512, 1024, 2048... byte is ideal to read data from the storage device.</dd>
+<dt>JD_FORMAT</dt>
+<dd>This option speficies the output pixel format. 0:RGB888, 1:RGB565 or 2:Grayscale.</dd>
+<dt>JD_USE_SCALE</dt>
+<dd>This option switches output scaling feature. When enabled (1), the output image can be descaled on decompression. The descaling ratio is specified in <tt>jd_decomp</tt> function.</dd>
+<dt>JD_FASTDECODE</dt>
+<dd><img class="rset" src="opt.png" width="512" height="264" alt="">This option switches the decompression algorithm. How this option affects the performance is highly depends on the processor architectre as shown in right image. The Lv.0 is the basic optimization in minimal memory usage suitable for 8/16-bit processors. The Lv.1 depends on 32-bit barrel shifter and is suitable for 32-bit processors. It requires additional 320 bytes of work area. The Lv.2 enables the table conversion for huffman decoding. It requires additional <tt>6 &lt;&lt; HUFF_BITS</tt>, 6144 by default, bytes of work area.</dd>
+<dt>JD_TBLCLIP</dt>
+<dd>This option switches to use table conversion for saturation alithmetics. It requires 1024 bytes of code size.</dd>
+</dl>
 </div>
 
 
@@ -203,7 +226,7 @@ int main (int argc, char* argv[])
 / * Redistributions of source code must retain the above copyright notice.
 /
 /----------------------------------------------------------------------------*/</pre>
-<p>Therefore TJpgDec license is one of the BSD-style license but there is a significant difference. Because TJpgDec is for embedded projects, the conditions for redistributions in binary form, such as embedded code, hex file and binary library, are not specified to increase its usability. The documentation of the distributions need not include about TJpgDec and its license document, and it may also. Of course TJpgDec is compatible with the projects under GNU GPL. When redistribute it with any modification, the license can also be changed to GNU GPL or BSD-style license.</p>
+<p>Therefore TJpgDec license is one of the BSD-style license but there is a significant difference. Because TJpgDec is for embedded projects, so that the conditions for redistributions in binary form, such as embedded code, hex file and binary library, are not specified in order to maximize its usability. The documentation of the distributions may or may not include about TJpgDec and its license document. Of course TJpgDec is compatible with the projects under GNU GPL. When redistribute TJpgDec with any modification, the license can also be changed to GNU GPL or any BSD-style license.</p>
 </div>
 
 <p class="foot"><a href="../00index.html">Return</a></p>
