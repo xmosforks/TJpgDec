@@ -11,6 +11,12 @@ extern "C" {
 #include "tjpgdcnf.h"
 #include <string.h>
 
+#if defined(__xcore__)
+#define JD_FPTRGROUP(name) __attribute__((fptrgroup(name)))
+#else
+#define JD_FPTRGROUP(name)
+#endif
+
 #if defined(_WIN32)	/* VC++ or some compiler without stdint.h */
 typedef unsigned char	uint8_t;
 typedef unsigned short	uint16_t;
@@ -55,6 +61,8 @@ typedef struct {
 
 /* Decompressor object structure */
 typedef struct JDEC JDEC;
+typedef size_t (*jd_input_func_t)(JDEC*, uint8_t*, size_t);
+typedef int (*jd_output_func_t)(JDEC*, void*, JRECT*);
 struct JDEC {
 	size_t dctr;				/* Number of bytes available in the input buffer */
 	uint8_t* dptr;				/* Current data read ptr */
@@ -84,15 +92,15 @@ struct JDEC {
 	jd_yuv_t* mcubuf;			/* Working buffer for the MCU */
 	void* pool;					/* Pointer to available memory pool */
 	size_t sz_pool;				/* Size of momory pool (bytes available) */
-	size_t (*infunc)(JDEC*, uint8_t*, size_t);	/* Pointer to jpeg stream input function */
+	JD_FPTRGROUP("tjpgd_input") jd_input_func_t infunc;	/* Pointer to jpeg stream input function */
 	void* device;				/* Pointer to I/O device identifiler for the session */
 };
 
 
 
 /* TJpgDec API functions */
-JRESULT jd_prepare (JDEC* jd, size_t (*infunc)(JDEC*,uint8_t*,size_t), void* pool, size_t sz_pool, void* dev);
-JRESULT jd_decomp (JDEC* jd, int (*outfunc)(JDEC*,void*,JRECT*), uint8_t scale);
+JRESULT jd_prepare (JDEC* jd, JD_FPTRGROUP("tjpgd_input") jd_input_func_t infunc, void* pool, size_t sz_pool, void* dev);
+JRESULT jd_decomp (JDEC* jd, JD_FPTRGROUP("tjpgd_output") jd_output_func_t outfunc, uint8_t scale);
 
 
 #ifdef __cplusplus

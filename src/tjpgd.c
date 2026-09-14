@@ -787,7 +787,7 @@ static JRESULT mcu_load (
 
 static JRESULT mcu_output (
 	JDEC* jd,			/* Pointer to the decompressor object */
-	int (*outfunc)(JDEC*, void*, JRECT*),	/* RGB output function */
+	JD_FPTRGROUP("tjpgd_output") jd_output_func_t outfunc,	/* RGB output function */
 	unsigned int x,		/* MCU location in the image */
 	unsigned int y		/* MCU location in the image */
 )
@@ -965,7 +965,7 @@ static JRESULT mcu_output (
 
 JRESULT jd_prepare (
 	JDEC* jd,				/* Blank decompressor object */
-	size_t (*infunc)(JDEC*, uint8_t*, size_t),	/* JPEG strem input function */
+	JD_FPTRGROUP("tjpgd_input") jd_input_func_t infunc,	/* JPEG strem input function */
 	void* pool,				/* Working buffer for the decompression session */
 	size_t sz_pool,			/* Size of working buffer */
 	void* dev				/* I/O device identifier for the session */
@@ -1121,7 +1121,7 @@ JRESULT jd_prepare (
 
 JRESULT jd_decomp (
 	JDEC* jd,								/* Initialized decompression object */
-	int (*outfunc)(JDEC*, void*, JRECT*),	/* RGB output function */
+	JD_FPTRGROUP("tjpgd_output") jd_output_func_t outfunc,	/* RGB output function */
 	uint8_t scale							/* Output de-scaling factor (0 to 3) */
 )
 {
