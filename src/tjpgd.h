@@ -11,7 +11,7 @@ extern "C" {
 #include "tjpgdcnf.h"
 #include <string.h>
 
-#if defined(__xcore__)
+#if defined(__xcore__) || defined(__riscv_xxcore)
 #define JD_FPTRGROUP(name) __attribute__((fptrgroup(name)))
 #else
 #define JD_FPTRGROUP(name)
@@ -37,7 +37,7 @@ typedef uint8_t jd_yuv_t;
 /* Error code */
 typedef enum {
 	JDR_OK = 0,	/* 0: Succeeded */
-	JDR_INTR,	/* 1: Interrupted by output function */	
+	JDR_INTR,	/* 1: Interrupted by output function */
 	JDR_INP,	/* 2: Device error or wrong termination of input stream */
 	JDR_MEM1,	/* 3: Insufficient memory pool for the image */
 	JDR_MEM2,	/* 4: Insufficient stream input buffer */
